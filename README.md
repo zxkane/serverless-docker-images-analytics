@@ -33,4 +33,12 @@ npm run cleanup
 
 Enjoy it!
 
+## Disclaimer -- about image layers data
+
+This project provides few pilot layers data of some official Docker images of [Docker hub][docker-hub], the data was fetched by the [simple script][image-layer-fetching-script]. This project does **NOT** guarantee the integrity of layers data and provides the continuous maintenance.
+
+You are free to use this project and the script, make sure not violating the user agreements of Docker hub.
+
 [athena]: https://aws.amazon.com/athena/?nc2=h_ql_prod_an_ath
+[docker-hub]: https://hub.docker.com/
+[image-layer-fetching-script]: https://gist.github.com/zxkane/23de226fee8806ee0ed8c05136972ce0
