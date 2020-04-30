@@ -29,6 +29,7 @@ npm run cleanup
 ## How to analyze the data
 
 - Login the AWS console with your account, Go to [Athena][athena]
+- In Query Editor, selction database `docker_image_db`, then select context menu `Load Partitions` from table `layers`
 - Click the **Saved Queries** to find the built-in analysis queries starting with `Docker_Layers_Stats`
 
 Enjoy it!

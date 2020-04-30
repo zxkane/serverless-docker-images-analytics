@@ -8,8 +8,8 @@ export class ServerlessDockerImagesAnalyticsStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const sourceBucket = new s3.Bucket(this, 'docker-images-layers-analytics');
-    const destPrefix = 'docker-images-layers';
+    const sourceBucket = new s3.Bucket(this, 'docker-image-layers-analytics');
+    const destPrefix = 'docker-image-layers';
     // upload raw data to s3 bucket
     new s3deploy.BucketDeployment(this, 'DeployImageLayerData', {
       sources: [s3deploy.Source.asset('./data')],
@@ -26,16 +26,28 @@ export class ServerlessDockerImagesAnalyticsStack extends cdk.Stack {
       catalogId: analyticsDB.catalogId,
       databaseName: analyticsDB.databaseName,
       tableInput: {
-        description: 'Docker image layers',
-        name: 'layers_csv',
+        description: 'Docker image layers with partition owner and name',
+        name: 'layers',
         tableType: 'EXTERNAL_TABLE',
         parameters: {
           'skip.header.line.count': '0'
         },
         partitionKeys: [
+          {
+            name: 'owner',
+            type: 'string'
+          },
+          {
+            name: 'name',
+            type: 'string'
+          },
         ],
         storageDescriptor: {
           columns: [
+            {
+              name: 'image-owner',
+              type: 'string'
+            },
             {
               name: 'image-name',
               type: 'string'
@@ -70,10 +82,10 @@ export class ServerlessDockerImagesAnalyticsStack extends cdk.Stack {
       database: analyticsDB.databaseName,
       name: 'Docker_Layers_Stats_Per_Image',
       queryString: `\
-        select "image-name", count(*) as "total-layers", sum("layer-size") as "total-layers-size(bytes)" from \
-        (select "image-name", "layer-digest", max("layer-size") as "layer-size" \
+        select concat("owner", '/', "name") as "image-name", count(*) as "total-layers", sum("layer-size") as "total-layers-size(bytes)" from \
+        (select "owner", "name", "layer-digest", max("layer-size") as "layer-size" \
         from "${analyticsDB.databaseName}"."${csvImageLayerTable.ref}" \
-        group by "image-name", "layer-digest") group by "image-name"`,
+        group by "owner", "name", "layer-digest") group by "owner", "name"`,
       description: 'Template of stats layers count and size per image'
     });
 
