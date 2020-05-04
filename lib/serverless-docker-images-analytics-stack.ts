@@ -45,15 +45,27 @@ export class ServerlessDockerImagesAnalyticsStack extends cdk.Stack {
         storageDescriptor: {
           columns: [
             {
-              name: 'image-owner',
-              type: 'string'
-            },
-            {
-              name: 'image-name',
-              type: 'string'
-            },
-            {
               name: 'image-tag',
+              type: 'string'
+            },
+            {
+              name: 'image-digest',
+              type: 'string'
+            },
+            {
+              name: 'platform-arch',
+              type: 'string'
+            },
+            {
+              name: 'platform-os',
+              type: 'string'
+            },
+            {
+              name: 'platform-variant',
+              type: 'string'
+            },
+            {
+              name: 'platform-os-version',
               type: 'string'
             },
             {
@@ -78,26 +90,36 @@ export class ServerlessDockerImagesAnalyticsStack extends cdk.Stack {
       }
     });
 
-    new athena.CfnNamedQuery(this, `stats layers and size per image`, {
+    new athena.CfnNamedQuery(this, `stats layers and size per image, platform`, {
       database: analyticsDB.databaseName,
-      name: 'Docker_Layers_Stats_Per_Image',
-      queryString: `\
-        select concat("owner", '/', "name") as "image-name", count(*) as "total-layers", sum("layer-size") as "total-layers-size(bytes)" from \
-        (select "owner", "name", "layer-digest", max("layer-size") as "layer-size" \
-        from "${analyticsDB.databaseName}"."${csvImageLayerTable.ref}" \
-        group by "owner", "name", "layer-digest") group by "owner", "name"`,
-      description: 'Template of stats layers count and size per image'
+      name: 'Docker_Layers_Stats_Per_Image_And_Platform',
+      queryString: `SELECT "image-name",
+          "platform",
+          count(*) AS "total-layers",
+          sum("layer-size") AS "total-layers-size(bytes)"
+      FROM 
+          (SELECT concat("owner",
+                '/', "name") AS "image-name", concat("platform-arch", '-', "platform-os") AS "platform", "layer-digest", max("layer-size") AS "layer-size"
+          FROM "${analyticsDB.databaseName}"."${csvImageLayerTable.ref}"
+          GROUP BY  "owner", "name", "platform-arch", "platform-os", "layer-digest")
+      GROUP BY  "image-name", "platform"`,
+      description: 'Template of stats layers count and size per image and platform'
     });
 
-    new athena.CfnNamedQuery(this, `stats total layers and size`, {
+    new athena.CfnNamedQuery(this, `stats total layers and size per arch and os`, {
       database: analyticsDB.databaseName,
-      name: 'Docker_Layers_Stats',
-      queryString: `\
-        select count(*) as "total-layers", sum("layer-size") as "total-layers-size(bytes)" from \
-        (select "layer-digest", max("layer-size") as "layer-size" \
-        from "${analyticsDB.databaseName}"."${csvImageLayerTable.ref}" \
-        group by "layer-digest")`,
-      description: 'Template of stats total layers and size'
+      name: 'Docker_Layers_Stats_Per_Platform',
+      queryString: `SELECT "platform",
+          count(*) AS "total-layers",
+          sum("layer-size") AS "total-layers-size(bytes)"
+      FROM 
+          (SELECT concat("platform-arch",
+                '-', "platform-os") AS platform, "layer-digest", max("layer-size") AS "layer-size"
+          FROM "${analyticsDB.databaseName}"."${csvImageLayerTable.ref}"
+          GROUP BY  "platform-arch", "platform-os", "layer-digest")
+      GROUP BY  "platform"
+      ORDER BY "total-layers-size(bytes)" desc`,
+      description: 'Template of stats total layers and size per arch and os'
     });
   }
 }
